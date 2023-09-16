@@ -66,6 +66,10 @@ replace_pattern = "rrr"
 # Header pattern
 hdr_pattern = ["</h1>", "</h2>", "</h3>"]
 
+
+format_cmt_existed = 1
+next_line_will_be_comment = 0
+
 REPLACE_TEXT_IMG="REPLACE_HEADER"
 
 HEADER_DEFALT = "IMAGE_NEEDS_TO_BE_CHECKKKKKKKKKKKKKKKKKKKKKKKKED"
@@ -87,6 +91,8 @@ def write_img_back(_file, _idx):
 	global TMP_HEADER
 	global CURR_LINE
 	global PRIMARY_KEY
+	global format_cmt_existed
+	global next_line_will_be_comment
 	CURR_LINE += 1
 	_file.writelines(text_align_center)
 	# Replace alt
@@ -97,17 +103,16 @@ def write_img_back(_file, _idx):
 	_file.writelines("\n")
 	CURR_LINE += 1
 	# Replace comment
-	_file.writelines(IMG_CMT_INFO[_idx].replace(REPLACE_TEXT_IMG,HEADER_TEXT))
-	_file.writelines("\n")
+	if format_cmt_existed == 0:
+		_file.writelines(IMG_CMT_INFO[_idx].replace(REPLACE_TEXT_IMG,HEADER_TEXT))
+		_file.writelines("\n")
+	else:
+		next_line_will_be_comment = 1
 	if (TMP_HEADER == HEADER_TEXT):
 		print(PRINT_COLOR["WARNING"] + "WARNING: 2 picture has same comment and attribute")
 		print(f"\tPlz check line {CURR_LINE - 1}")
 	TMP_HEADER = HEADER_TEXT
 
-"""
-Get header content
-Remove 1. 2. from it
-"""
 def get_header(_txt):
 	global HEADER
 	global HEADER_TEXT
@@ -132,11 +137,14 @@ if __name__ == "__main__":
 	as f:
 		input_file = f.readlines()
 
+	# print(len(input_file))
 	for _line in input_file:
 		if("<img data-thumb" in _line):
 			IMG_TXT_INFO.extend(_line.replace(img_txt_replace,img_txt_to).\
 															split("><")[1:-1])
+	# print(IMG_TXT_INFO)
 	IMG_CMT_INFO=[picture_comment]*(len(IMG_TXT_INFO))
+	# print(len(IMG_CMT_INFO))
 	for index in range(len(IMG_TXT_INFO)):
 		IMG_TXT_INFO[index] = IMG_TXT_INFO[index].\
 										replace(img_txt_to[1:], img_txt_to)
@@ -155,15 +163,28 @@ if __name__ == "__main__":
 				if (HEADER == HEADER_DEFALT):
 					print(PRINT_COLOR["ERROR"] + "ERROR: Picture without comment or attribute")
 					print(f"\tPlz check line {CURR_LINE + 1}")
+					# print(f"Plz check image number {write_idx + 1} "
+					# 	+ f"(find: {HEADER}), "
+					# 	+ f"update comment and attribute!!!!\n"
+					# 	+ f"PLZ CHECK line {CURR_LINE + 1} in HTML format")
 				if (write_idx > (len(IMG_TXT_INFO) - 1)):
 					CURR_LINE += 1
 					out_file.writelines(_line)
 					print(PRINT_COLOR["ERROR"] + "ERROR: No more pictures to replace")
 					print(f"\tPlz check line {CURR_LINE}")
+					# print(f"There are too only {len(IMG_TXT_INFO)} pictures, "
+					# 	+ f"but there are too many places to replace ({write_idx + 1} places)\n"
+					# 	+ f"Skip at line {CURR_LINE}, PLZ CHECK THAT")
 				else:
 					write_img_back(out_file, write_idx)
 					write_idx += 1
 			else:
 				CURR_LINE += 1
-				out_file.writelines(_line)
+				if (next_line_will_be_comment == 1):
+					_tmp = _line.replace("<p dir=\"ltr\">", text_align_center + "<em>")
+					_tmp = _tmp.replace("</p>", "</em></p>")
+					out_file.writelines(_tmp)
+					next_line_will_be_comment = 0
+				else:
+					out_file.writelines(_line)
 	print(sys.argv)
